@@ -1,6 +1,7 @@
 # NLW5
 
 npm install
+
 expo install
 
 expo start
