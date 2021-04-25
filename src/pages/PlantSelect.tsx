@@ -3,7 +3,8 @@ import {
     View,
     Text,
     StyleSheet,
-    FlatList
+    FlatList,
+    ActivityIndicator
 } from 'react-native';
 import { EnviromentButton } from '../components/EnviromentButton';
 
@@ -13,23 +14,12 @@ import fonts from '../styles/fonts';
 import api from '../services/api';
 import { PlantCardPrimary } from '../components/PlantCardPrimary';
 import { Load } from '../components/Load'
+import { useNavigation } from '@react-navigation/core';
+import { PlantProps } from '../libs/storage';
 
 interface EnviromentProps {
     key:string,
     title:string
-}
-
-interface PlantProps {
-    id: string,
-    name: string,
-    about: string,
-    water_tips:string,
-    photo: string,
-    environments: [string],
-    frequency: {
-    times: number,
-    repeat_every: string
-}
 }
 
 export function PlantSelect(){
@@ -38,6 +28,9 @@ export function PlantSelect(){
     const[filteredplants,setFilteredPlants]=useState<PlantProps[]>([]);
     const[enviromentsSelected,setEnviromentsSelected]=useState('all');
     const[loading,setLoading]=useState(true);
+    const[page,setPage]=useState(1);
+    const[loadingMore,setLoadingMore]=useState(false);
+    const Navigation = useNavigation();
 
     function handleEnviromentSelected(enviroment:string){
         setEnviromentsSelected(enviroment);
@@ -62,22 +55,45 @@ export function PlantSelect(){
                 ...data
             ])
         }
-
         fetchEnviroment();
 
     },[])
+
+    async function fetchPlants(){
+        const { data } = await api.get(`plants?_sort=name&_order=asc&_page=${page}&_limit=8`);
+
+        if(!data)
+            return setLoading(true)
+        
+        if(page > 1){
+            setPlants(oldValue=>[...oldValue,...data])
+            setFilteredPlants(oldValue=>[...oldValue,...data])
+        }else{
+            setPlants(data);
+            setFilteredPlants(data);          
+        }           
+        setLoading(false);
+        setLoadingMore(false);
+    }
 
     useEffect(()=>{
-        async function fetchEnviroment(){
-            const { data } = await api.get('plants?_sort=name&_order=asc');
-            setPlants(data);
-            setFilteredPlants(data);
-            setLoading(false);
-        }
 
-        fetchEnviroment();
+        fetchPlants();
 
     },[])
+
+    function handleFetchMore(distance: number){
+        if(distance < 1)
+            return;
+
+        setLoadingMore(true);
+        setPage(oldValue=>oldValue+1)    
+        fetchPlants();
+    }
+
+    function handlePlantSelect(plant: PlantProps){
+        Navigation.navigate('PlantSave',{plant})
+    }
 
     if(loading)
         return <Load />
@@ -93,8 +109,9 @@ export function PlantSelect(){
                 </Text>
             </View>
             <View>
-                <FlatList
+                <FlatList                   
                     data={enviroments} 
+                    keyExtractor={(item)=>String(item.key)}
                     renderItem={({item})=>(
                         <EnviromentButton 
                             title={item.title}
@@ -109,12 +126,23 @@ export function PlantSelect(){
             </View>
             <View style={styles.plants}>
                 <FlatList
+                    onEndReachedThreshold={0.1}
+                    onEndReached={({distanceFromEnd})=>handleFetchMore(distanceFromEnd)}
                     data={filteredplants} 
+                    keyExtractor={(item)=>String(item.id)}
                     renderItem={({item})=>(
-                        <PlantCardPrimary data={item}/>
+                        <PlantCardPrimary 
+                            data={item}
+                            onPress={()=>handlePlantSelect(item)}
+                        />
                     )}
                     showsVerticalScrollIndicator={false}
                     numColumns={2}
+                    ListFooterComponent={
+                        loadingMore ?
+                        <ActivityIndicator color={colors.green} />
+                        : <></>
+                    }
                 />
             </View>
             

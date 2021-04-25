@@ -12,7 +12,7 @@ import {
     Keyboard,
     Alert
 } from 'react-native';
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button } from '../components/Button'
 
 import colors from '../styles/colors';
@@ -25,9 +25,21 @@ export function UserIdentification(){
 
     const navigation = useNavigation();
 
+
+
     function handlersubmit(){
         if(!!name){
-            navigation.navigate('Confirmation');             
+
+            AsyncStorage.setItem('@plantmanager:user',name)
+
+            navigation.navigate('Confirmation',{
+                title:'prontinho',
+                subtitle:'Agora vamos começar a cuidas das suas plantinhas com muito cuidado.',
+                buttontitle:'Começar',
+                icon:'smile',
+                nextScreen:'PlantSelect'
+            }); 
+                        
         }else{
             Alert.alert(
                 "Alerta",
